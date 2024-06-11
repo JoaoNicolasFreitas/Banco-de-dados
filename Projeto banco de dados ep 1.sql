@@ -1,13 +1,17 @@
--- Criar o banco de dados Cafe, se não existir
 CREATE DATABASE IF NOT EXISTS Cafe;
 USE Cafe;
 
--- Criação das tabelas
 CREATE TABLE IF NOT EXISTS Cliente (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nome VARCHAR(255) NOT NULL,
+    nome_chamado VARCHAR(255),
+    cpf VARCHAR(11) UNIQUE NOT NULL,
+    data_nascimento DATE,
+    telefone VARCHAR(15),
     email VARCHAR(255) UNIQUE,
-    data_nascimento DATE
+    bairro VARCHAR(255),
+    cidade VARCHAR(255),
+    estado VARCHAR(2)
 );
 
 CREATE TABLE IF NOT EXISTS Pastel (
@@ -15,7 +19,8 @@ CREATE TABLE IF NOT EXISTS Pastel (
     nome VARCHAR(255) NOT NULL,
     descricao TEXT,
     preco DECIMAL(10,2) NOT NULL,
-    categoria VARCHAR(50)
+    categoria VARCHAR(50),
+    tamanho VARCHAR(20)
 );
 
 CREATE TABLE IF NOT EXISTS Recheio (
@@ -64,35 +69,31 @@ CREATE TABLE IF NOT EXISTS Pedido_Item (
     FOREIGN KEY (ingrediente_id) REFERENCES Recheio(id)
 );
 
--- Inserção de dados de exemplo
-INSERT IGNORE INTO Cliente (nome, email, data_nascimento) VALUES
-('João', 'joao@example.com', '1990-05-15'),
-('Maria', 'maria@example.com', '1985-10-20'),
-('Pedro', 'pedro@example.com', '1995-03-08'),
-('Ana', 'ana@example.com', '1992-07-12'),
-('Lucas', 'lucas@example.com', '1988-09-25'),
-('Luke Skywalker', 'luke@starwars.com', '1977-05-25'),
-('Leia Organa', 'leia@starwars.com', '1977-05-25'),
-('Obi-Wan Kenobi', 'obiwan@starwars.com', '1960-05-25'),
-('Jujutsu Kaisen', 'jujutsu@example.com', '2000-12-15'),
-('Satoru Gojo', 'gojo@example.com', '1988-03-28'),
-('Yuji Itadori', 'yuji@example.com', '2003-09-10'),
-('Megumi Fushiguro', 'megumi@example.com', '2002-07-04');
+INSERT IGNORE INTO Cliente (nome, nome_chamado, cpf, data_nascimento, telefone, email, bairro, cidade, estado) VALUES
+('João Silva', 'João', '12345678901', '1990-05-15', '21987654321', 'joao@example.com', 'Centro', 'Rio de Janeiro', 'RJ'),
+('Maria Souza', 'Maria', '23456789012', '1985-10-20', '21987654322', 'maria@example.com', 'Copacabana', 'Rio de Janeiro', 'RJ'),
+('Pedro Santos', 'Pedro', '34567890123', '1995-03-08', '21987654323', 'pedro@example.com', 'Barra', 'Rio de Janeiro', 'RJ'),
+('Ana Oliveira', 'Ana', '45678901234', '1992-07-12', '21987654324', 'ana@example.com', 'Botafogo', 'Rio de Janeiro', 'RJ');
 
-INSERT INTO Pastel (nome, descricao, preco, categoria) VALUES
-('Pastel de Carne', 'Delicioso pastel de carne moída', 3.50, 'Salgado'),
-('Pastel de Queijo', 'Saboroso pastel com recheio de queijo', 3.00, 'Salgado'),
-('Pastel de Chocolate', 'Irresistível pastel recheado com chocolate', 2.50, 'Doce');
+INSERT INTO Pastel (nome, descricao, preco, categoria, tamanho) VALUES
+('Pastel de Carne', 'Delicioso pastel de carne moída', 3.50, 'Salgado', 'Grande'),
+('Pastel de Queijo', 'Saboroso pastel com recheio de queijo', 3.00, 'Salgado', 'Médio'),
+('Pastel de Chocolate', 'Irresistível pastel recheado com chocolate', 2.50, 'Doce', 'Pequeno'),
+('Pastel Vegano', 'Pastel com recheio de legumes e tofu', 4.00, 'Vegano', 'Grande');
 
 INSERT INTO Recheio (nome) VALUES
 ('Carne'),
 ('Queijo'),
-('Chocolate');
+('Chocolate'),
+('Legumes'),
+('Tofu');
 
 INSERT INTO Pastel_Recheio (pastel_id, recheio_id) VALUES
-(1, 1),
-(2, 2),
-(3, 3);
+(1, 1), -- Pastel de Carne com Carne
+(2, 2), -- Pastel de Queijo com Queijo
+(3, 3), -- Pastel de Chocolate com Chocolate
+(4, 4), -- Pastel Vegano com Legumes
+(4, 5); -- Pastel Vegano com Tofu
 
 INSERT INTO Bebida (nome, preco) VALUES
 ('Café', 2.00),
@@ -104,16 +105,59 @@ INSERT INTO Bebida (nome, preco) VALUES
 INSERT INTO Pedido (cliente_id, data_pedido) VALUES
 (1, '2024-06-01 08:30:00'),
 (2, '2024-06-02 12:15:00'),
-(3, '2024-06-03 17:45:00');
+(3, '2024-06-03 17:45:00'),
+(4, '2024-06-04 11:30:00');
 
 INSERT INTO Pedido_Item (pedido_id, pastel_id, bebida_id, quantidade) VALUES
-(1, 1, 1, 2),
-(1, 2, NULL, 3),
-(2, 3, 2, 1),
-(3, 1, 4, 2),
-(3, 3, 5, 1);
+(1, 1, 1, 2), -- Pedido 1: 2 Pastéis de Carne e 1 Café
+(1, 2, NULL, 3), -- Pedido 1: 3 Pastéis de Queijo
+(2, 3, 2, 1), -- Pedido 2: 1 Pastel de Chocolate e 1 Suco de Laranja
+(3, 1, 4, 2), -- Pedido 3: 2 Pastéis de Carne e 1 Refrigerante
+(3, 3, 5, 1), -- Pedido 3: 1 Pastel de Chocolate e 1 Chá Gelado
+(4, 4, 3, 1); -- Pedido 4: 1 Pastel Vegano e 1 Água Mineral
 
--- Função para calcular o total de um pedido
+DELIMITER //
+CREATE PROCEDURE RegistraCliente (
+    IN p_nome VARCHAR(255),
+    IN p_nome_chamado VARCHAR(255),
+    IN p_cpf VARCHAR(11),
+    IN p_data_nascimento DATE,
+    IN p_telefone VARCHAR(15),
+    IN p_email VARCHAR(255),
+    IN p_bairro VARCHAR(255),
+    IN p_cidade VARCHAR(255),
+    IN p_estado VARCHAR(2)
+)
+BEGIN
+    INSERT INTO Cliente (nome, nome_chamado, cpf, data_nascimento, telefone, email, bairro, cidade, estado)
+    VALUES (p_nome, p_nome_chamado, p_cpf, p_data_nascimento, p_telefone, p_email, p_bairro, p_cidade, p_estado);
+END //
+DELIMITER ;
+
+DELIMITER //
+CREATE PROCEDURE RegistraPedido (
+    IN p_cliente_id INT,
+    IN p_data_pedido DATETIME
+)
+BEGIN
+    INSERT INTO Pedido (cliente_id, data_pedido)
+    VALUES (p_cliente_id, p_data_pedido);
+END //
+DELIMITER ;
+
+DELIMITER //
+CREATE PROCEDURE AdicionaItemPedido (
+    IN p_pedido_id INT,
+    IN p_pastel_id INT,
+    IN p_bebida_id INT,
+    IN p_quantidade INT
+)
+BEGIN
+    INSERT INTO Pedido_Item (pedido_id, pastel_id, bebida_id, quantidade)
+    VALUES (p_pedido_id, p_pastel_id, p_bebida_id, p_quantidade);
+END //
+DELIMITER ;
+
 DELIMITER //
 CREATE FUNCTION CalculaTotalPedido(pedido_id INT) RETURNS DECIMAL(10,2)
 BEGIN
@@ -127,10 +171,9 @@ BEGIN
     WHERE pi.pedido_id = pedido_id;
     
     RETURN IFNULL(total, 0.00);
-END//
+END //
 DELIMITER ;
 
--- Função para listar os pasteis com recheio de bacon ou queijo
 DELIMITER //
 CREATE FUNCTION ListaPastelComBaconOuQueijo() RETURNS VARCHAR(255)
 BEGIN
@@ -141,13 +184,12 @@ BEGIN
     FROM Pastel p
     JOIN Pastel_Recheio pr ON p.id = pr.pastel_id
     JOIN Recheio r ON pr.recheio_id = r.id
-    WHERE r.nome IN ('Carne', 'Queijo');
+    WHERE r.nome IN ('Bacon', 'Queijo');
     
-    RETURN IFNULL(nomes_pastel, 'Nenhum pastel possui carne ou queijo no recheio.');
-END//
+    RETURN IFNULL(nomes_pastel, 'Nenhum pastel possui bacon ou queijo no recheio.');
+END //
 DELIMITER ;
 
--- Função para listar a quantidade de pedidos que incluem pasteis e bebidas
 DELIMITER //
 CREATE FUNCTION ListaPedidosPastelBebida() RETURNS INT
 BEGIN
@@ -159,10 +201,9 @@ BEGIN
     WHERE pastel_id IS NOT NULL AND bebida_id IS NOT NULL;
     
     RETURN total_pedidos;
-END//
+END //
 DELIMITER ;
 
--- Função para obter o pastel mais vendido
 DELIMITER //
 CREATE FUNCTION PastelMaisVendido() RETURNS VARCHAR(255)
 BEGIN
@@ -176,90 +217,93 @@ BEGIN
         GROUP BY pastel_id
         ORDER BY total_vendas DESC
         LIMIT 1
-    ) AS t
-    JOIN Pastel p ON t.pastel_id = p.id;
+    ) AS subquery
+    JOIN Pastel p ON subquery.pastel_id = p.id;
     
-    RETURN IFNULL(nome_pastel, 'Nenhum pastel vendido.');
-END//
+    RETURN nome_pastel;
+END //
 DELIMITER ;
 
--- Criação da visualização DetalhesPedido
-CREATE VIEW DetalhesPedido AS
-SELECT p.id AS pedido_id, c.nome AS nome_cliente, c.email AS email_cliente, c.data_nascimento AS data_nascimento_cliente,
-       p.data_pedido, 
-       SUM(pi.quantidade) AS total_itens, 
-       GROUP_CONCAT(CONCAT(pi.quantidade, 'x ', pa.nome) SEPARATOR ', ') AS itens_pedido,
-       CalculaTotalPedido(p.id) AS total_pedido
+DELIMITER //
+CREATE TRIGGER VerificaEstoque
+BEFORE INSERT ON Pedido_Item
+FOR EACH ROW
+BEGIN
+    DECLARE qtd_estoque INT;
+    IF NEW.ingrediente_id IS NOT NULL THEN
+        SELECT quantidade INTO qtd_estoque
+        FROM Estoque
+        WHERE ingrediente_id = NEW.ingrediente_id;
+        IF qtd_estoque < NEW.quantidade THEN
+            SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Quantidade insuficiente em estoque';
+        END IF;
+    END IF;
+END //
+DELIMITER ;
+
+CREATE VIEW vw_pedidos_clientes AS
+SELECT p.id AS pedido_id, c.nome AS cliente, p.data_pedido
 FROM Pedido p
-JOIN Pedido_Item pi ON p.id = pi.pedido_id
+JOIN Cliente c ON p.cliente_id = c.id;
+
+SELECT p.categoria, p.nome, COUNT(pi.id) AS total_vendido
+FROM Pedido_Item pi
+JOIN Pastel p ON pi.pastel_id = p.id
+GROUP BY p.categoria, p.nome
+ORDER BY p.categoria, total_vendido DESC;
+
+SELECT c.nome, COUNT(p.id) AS total_pedidos
+FROM Pedido p
 JOIN Cliente c ON p.cliente_id = c.id
-JOIN Pastel pa ON pi.pastel_id = pa.id
-GROUP BY p.id, c.nome, c.email, c.data_nascimento, p.data_pedido;
+GROUP BY c.nome
+ORDER BY total_pedidos DESC;
 
--- Criação da visualização PastelInfo
-CREATE VIEW PastelInfo AS
-SELECT p.id, p.nome, p.descricao, p.preco, p.categoria,
-       GROUP_CONCAT(r.nome SEPARATOR ', ') AS recheios
-FROM Pastel p
-JOIN Pastel_Recheio pr ON p.id = pr.pastel_id
-JOIN Recheio r ON pr.recheio_id = r.id
-GROUP BY p.id;
-
--- Criação da visualização RecheioInfo
-CREATE VIEW RecheioInfo AS
-SELECT pr.pastel_id, 
-       GROUP_CONCAT(r.nome SEPARATOR ', ') AS recheios
-FROM Pastel_Recheio pr
-JOIN Recheio r ON pr.recheio_id = r.id
-GROUP BY pr.pastel_id;
-
--- Criação da visualização Vendas
-CREATE VIEW Vendas AS
-SELECT p.data_pedido, pi.quantidade, 
-       pa.nome AS nome_pastel, pa.descricao AS descricao_pastel, pa.preco AS preco_pastel, pa.categoria AS categoria_pastel, 
-       r.recheios,
-       b.nome AS nome_bebida, b.preco AS preco_bebida,
-       CalculaTotalPedido(p.id) AS total_pedido
+SELECT YEAR(p.data_pedido) AS ano, MONTH(p.data_pedido) AS mes, 
+       SUM((pastel.preco * pi.quantidade) + COALESCE(b.preco, 0)) AS receita_total
 FROM Pedido p
 JOIN Pedido_Item pi ON p.id = pi.pedido_id
-LEFT JOIN Pastel pa ON pi.pastel_id = pa.id
-LEFT JOIN RecheioInfo r ON r.pastel_id = pa.id
-LEFT JOIN Bebida b ON pi.bebida_id = b.id;
+LEFT JOIN Pastel pastel ON pi.pastel_id = pastel.id
+LEFT JOIN Bebida b ON pi.bebida_id = b.id
+GROUP BY ano, mes
+ORDER BY ano, mes;
 
--- Criação da visualização FaixaPrecoBebida
-CREATE VIEW FaixaPrecoBebida AS
-SELECT CASE 
-        WHEN preco <= 2.00 THEN 'Até R$2.00'
-        WHEN preco > 2.00 AND preco <= 3.00 THEN 'De R$2.01 a R$3.00'
-        ELSE 'Acima de R$3.00'
-    END AS Faixa_Preco,
-    nome AS Nome_Bebida,
-    SUM(pi.quantidade) AS Quantidade_Vendida
-FROM Bebida b
-JOIN Pedido_Item pi ON b.id = pi.bebida_id
-GROUP BY Faixa_Preco, b.id
-ORDER BY Faixa_Preco, Quantidade_Vendida DESC;
+SELECT p.nome, COUNT(pi.id) AS total_vendido
+FROM Pedido_Item pi
+JOIN Pastel p ON pi.pastel_id = p.id
+GROUP BY p.nome
+ORDER BY total_vendido DESC
+LIMIT 10;
 
--- Consulta 1: DetalhesPedido
-SELECT * FROM DetalhesPedido;
+SELECT b.nome, COUNT(pi.id) AS total_vendido
+FROM Pedido_Item pi
+JOIN Bebida b ON pi.bebida_id = b.id
+GROUP BY b.nome
+ORDER BY total_vendido DESC
+LIMIT 10;
 
--- Consulta 2: PastelInfo
-SELECT * FROM PastelInfo;
+SELECT p.categoria, SUM(p.preco * pi.quantidade) AS receita_total
+FROM Pedido_Item pi
+JOIN Pastel p ON pi.pastel_id = p.id
+GROUP BY p.categoria
+ORDER BY receita_total DESC;
 
--- Consulta 3: RecheioInfo
-SELECT * FROM RecheioInfo;
+SELECT c.nome, SUM((pastel.preco * pi.quantidade) + COALESCE(b.preco, 0)) AS receita_total
+FROM Pedido p
+JOIN Cliente c ON p.cliente_id = c.id
+JOIN Pedido_Item pi ON p.id = pi.pedido_id
+LEFT JOIN Pastel pastel ON pi.pastel_id = pastel.id
+LEFT JOIN Bebida b ON pi.bebida_id = b.id
+GROUP BY c.nome
+ORDER BY receita_total DESC;
 
--- Consulta 4: Vendas
-SELECT * FROM Vendas;
+SELECT YEAR(p.data_pedido) AS ano, MONTH(p.data_pedido) AS mes, COUNT(p.id) AS total_pedidos
+FROM Pedido p
+GROUP BY ano, mes
+ORDER BY ano, mes;
 
--- Consulta 5: ListaPastelComBaconOuQueijo()
-SELECT ListaPastelComBaconOuQueijo() AS Pasteis_Com_Carne_Ou_Queijo;
-
--- Consulta 6: ListaPedidosPastelBebida()
-SELECT ListaPedidosPastelBebida() AS Quantidade_Pedidos_Pasteis_Bebidas;
-
--- Consulta 7: PastelMaisVendido()
-SELECT PastelMaisVendido() AS Pastel_Mais_Vendido;
-
--- Consulta 8: FaixaPrecoBebida
-SELECT * FROM FaixaPrecoBebida;
+SELECT c.nome, COUNT(p.id) AS total_pedidos
+FROM Pedido p
+JOIN Cliente c ON p.cliente_id = c.id
+GROUP BY c.nome
+ORDER BY total_pedidos DESC;
