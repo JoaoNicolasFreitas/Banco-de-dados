@@ -174,3 +174,93 @@ INSERT INTO Pedido_Item (pedido_id, pastel_id, bebida_id, ingrediente_id, quanti
 (18, 3, NULL, NULL, 2), (18, NULL, 6, NULL, 1), -- Pedido 18
 (19, 4, NULL, NULL, 3), (19, NULL, 1, NULL, 1), -- Pedido 19
 (20, 5, NULL, NULL, 1), (20, NULL, 2, NULL, 3); -- Pedido 20
+
+DELIMITER //
+CREATE FUNCTION CalculaTotalPedido(pedido_id INT) RETURNS DECIMAL(10,2)
+BEGIN
+    DECLARE total DECIMAL(10,2);
+    
+    SELECT SUM((pastel.preco * pi.quantidade) + COALESCE(b.preco, 0))
+    INTO total
+    FROM Pedido_Item pi
+    LEFT JOIN Pastel pastel ON pi.pastel_id = pastel.id
+    LEFT JOIN Bebida b ON pi.bebida_id = b.id
+    WHERE pi.pedido_id = pedido_id;
+    
+    RETURN IFNULL(total, 0.00);
+END //
+DELIMITER ;
+
+DELIMITER //
+CREATE FUNCTION ListaPastelComBaconOuQueijo() RETURNS VARCHAR(255)
+BEGIN
+    DECLARE nomes_pastel VARCHAR(255);
+    
+    SELECT GROUP_CONCAT(p.nome SEPARATOR ', ')
+    INTO nomes_pastel
+    FROM Pastel p
+    JOIN Pastel_Recheio pr ON p.id = pr.pastel_id
+    JOIN Recheio r ON pr.recheio_id = r.id
+    WHERE r.nome IN ('Bacon', 'Queijo');
+    
+    RETURN IFNULL(nomes_pastel, 'Nenhum pastel possui bacon ou queijo no recheio.');
+END //
+DELIMITER ;
+
+DELIMITER //
+CREATE FUNCTION ListaPedidosPastelBebida() RETURNS INT
+BEGIN
+    DECLARE total_pedidos INT;
+    
+    SELECT COUNT(DISTINCT pedido_id)
+    INTO total_pedidos
+    FROM Pedido_Item
+    WHERE pastel_id IS NOT NULL AND bebida_id IS NOT NULL;
+    
+    RETURN total_pedidos;
+END //
+DELIMITER ;
+
+DELIMITER //
+CREATE FUNCTION PastelMaisVendido() RETURNS VARCHAR(255)
+BEGIN
+    DECLARE nome_pastel VARCHAR(255);
+    
+    SELECT nome
+    INTO nome_pastel
+    FROM (
+        SELECT pastel_id, SUM(quantidade) AS total_vendas
+        FROM Pedido_Item
+        GROUP BY pastel_id
+        ORDER BY total_vendas DESC
+        LIMIT 1
+    ) AS subquery
+    JOIN Pastel p ON subquery.pastel_id = p.id;
+    
+    RETURN nome_pastel;
+END //
+DELIMITER ;
+
+DELIMITER //
+CREATE TRIGGER VerificaEstoque
+BEFORE INSERT ON Pedido_Item
+FOR EACH ROW
+BEGIN
+    DECLARE qtd_estoque INT;
+    IF NEW.ingrediente_id IS NOT NULL THEN
+        SELECT quantidade INTO qtd_estoque
+        FROM Estoque
+        WHERE ingrediente_id = NEW.ingrediente_id;
+        IF qtd_estoque < NEW.quantidade THEN
+            SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Quantidade insuficiente em estoque';
+        END IF;
+    END IF;
+END //
+DELIMITER ;
+
+CREATE VIEW vw_pedidos_clientes AS
+SELECT p.id AS pedido_id, c.nome AS cliente, p.data_pedido
+FROM Pedido p
+JOIN Cliente c ON p.cliente_id = c.id;
+
