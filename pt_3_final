@@ -1,0 +1,70 @@
+CREATE DATABASE IF NOT EXISTS Cafe;
+USE Cafe;
+
+CREATE TABLE IF NOT EXISTS Cliente (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(255) NOT NULL,
+    nome_chamado VARCHAR(255),
+    cpf VARCHAR(11) UNIQUE NOT NULL,
+    data_nascimento DATE,
+    telefone VARCHAR(15),
+    email VARCHAR(255) UNIQUE,
+    bairro VARCHAR(255),
+    cidade VARCHAR(255),
+    estado VARCHAR(2)
+);
+
+CREATE TABLE IF NOT EXISTS Pastel (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(255) NOT NULL,
+    descricao TEXT,
+    preco DECIMAL(10,2) NOT NULL,
+    categoria VARCHAR(50),
+    tamanho VARCHAR(20)
+);
+
+CREATE TABLE IF NOT EXISTS Recheio (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS Pastel_Recheio (
+    pastel_id INT,
+    recheio_id INT,
+    FOREIGN KEY (pastel_id) REFERENCES Pastel(id),
+    FOREIGN KEY (recheio_id) REFERENCES Recheio(id),
+    PRIMARY KEY (pastel_id, recheio_id)
+);
+
+CREATE TABLE IF NOT EXISTS Bebida (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(255) NOT NULL,
+    preco DECIMAL(10,2) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS Estoque (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    ingrediente_id INT,
+    quantidade INT NOT NULL,
+    FOREIGN KEY (ingrediente_id) REFERENCES Recheio(id)
+);
+
+CREATE TABLE IF NOT EXISTS Pedido (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    cliente_id INT,
+    data_pedido DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (cliente_id) REFERENCES Cliente(id)
+);
+
+CREATE TABLE IF NOT EXISTS Pedido_Item (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    pedido_id INT,
+    pastel_id INT,
+    bebida_id INT,
+    ingrediente_id INT,
+    quantidade INT NOT NULL,
+    FOREIGN KEY (pedido_id) REFERENCES Pedido(id),
+    FOREIGN KEY (pastel_id) REFERENCES Pastel(id),
+    FOREIGN KEY (bebida_id) REFERENCES Bebida(id),
+    FOREIGN KEY (ingrediente_id) REFERENCES Recheio(id)
+);
