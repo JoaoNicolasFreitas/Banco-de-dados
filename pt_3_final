@@ -264,3 +264,70 @@ SELECT p.id AS pedido_id, c.nome AS cliente, p.data_pedido
 FROM Pedido p
 JOIN Cliente c ON p.cliente_id = c.id;
 
+SELECT p.categoria, p.nome, COUNT(pi.id) AS total_vendido
+FROM Pedido_Item pi
+JOIN Pastel p ON pi.pastel_id = p.id
+GROUP BY p.categoria, p.nome
+ORDER BY p.categoria, total_vendido DESC;
+
+SELECT c.nome, COUNT(p.id) AS total_pedidos
+FROM Pedido p
+JOIN Cliente c ON p.cliente_id = c.id
+GROUP BY c.nome
+ORDER BY total_pedidos DESC;
+
+SELECT YEAR(p.data_pedido) AS ano, MONTH(p.data_pedido) AS mes, 
+       SUM((pastel.preco * pi.quantidade) + COALESCE(b.preco, 0)) AS receita_total
+FROM Pedido p
+JOIN Pedido_Item pi ON p.id = pi.pedido_id
+LEFT JOIN Pastel pastel ON pi.pastel_id = pastel.id
+LEFT JOIN Bebida b ON pi.bebida_id = b.id
+GROUP BY ano, mes
+ORDER BY ano, mes;
+
+SELECT p.nome, COUNT(pi.id) AS total_vendido
+FROM Pedido_Item pi
+JOIN Pastel p ON pi.pastel_id = p.id
+GROUP BY p.nome
+ORDER BY total_vendido DESC
+LIMIT 10;
+
+SELECT b.nome, COUNT(pi.id) AS total_vendido
+FROM Pedido_Item pi
+JOIN Bebida b ON pi.bebida_id = b.id
+GROUP BY b.nome
+ORDER BY total_vendido DESC
+LIMIT 10;
+
+SELECT p.categoria, SUM(p.preco * pi.quantidade) AS receita_total
+FROM Pedido_Item pi
+JOIN Pastel p ON pi.pastel_id = p.id
+GROUP BY p.categoria
+ORDER BY receita_total DESC;
+
+SELECT c.nome, SUM((pastel.preco * pi.quantidade) + COALESCE(b.preco, 0)) AS receita_total
+FROM Pedido p
+JOIN Cliente c ON p.cliente_id = c.id
+JOIN Pedido_Item pi ON p.id = pi.pedido_id
+LEFT JOIN Pastel pastel ON pi.pastel_id = pastel.id
+LEFT JOIN Bebida b ON pi.bebida_id = b.id
+GROUP BY c.nome
+ORDER BY receita_total DESC;
+
+SELECT YEAR(p.data_pedido) AS ano, MONTH(p.data_pedido) AS mes, COUNT(p.id) AS total_pedidos
+FROM Pedido p
+GROUP BY ano, mes
+ORDER BY ano, mes;
+
+SELECT c.nome AS cliente,
+       COUNT(DISTINCT p.id) AS total_pedidos,
+       SUM((pastel.preco * pi.quantidade) + COALESCE(b.preco, 0)) AS receita_total,
+       c.email
+FROM Pedido p
+JOIN Cliente c ON p.cliente_id = c.id
+JOIN Pedido_Item pi ON p.id = pi.pedido_id
+LEFT JOIN Pastel pastel ON pi.pastel_id = pastel.id
+LEFT JOIN Bebida b ON pi.bebida_id = b.id
+GROUP BY c.nome, c.email
+ORDER BY receita_total DESC;
+
